@@ -22,7 +22,7 @@ class Options;
 class Attributes;
 class Transform;
 class Hider;
-class MicroPolygonGrid;
+class WorkGrid;
 
 //==================================================================
 /// PrimitiveBase
@@ -253,7 +253,7 @@ public:
 					*/
 
 	virtual void	Dice(
-						MicroPolygonGrid &g,
+						WorkGrid &g,
 						bool doColorCoded ) const;
 
 	inline Vec2f CalcLocalUV( const Vec2f &gridUV ) const

@@ -55,7 +55,7 @@ SlRunContext::~SlRunContext()
 //==================================================================
 // this is called only once and from the end of the grid constructor
 // so to get the pointer of the grid that owns this object
-void SlRunContext::Init( MicroPolygonGrid *pGrid )
+void SlRunContext::Init( WorkGrid *pGrid )
 {
 	// make sure it hasn't been set already !
 	DASSERT( mpGrid == NULL );

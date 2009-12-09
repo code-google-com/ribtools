@@ -21,36 +21,9 @@ namespace RI
 
 //==================================================================
 class Attributes;
-class SlRunContext;
-
-/*
-//==================================================================
-template <class _T, size_t _MAX>
-class DumbPool
-{
-	_T		mStorage[_MAX];
-	size_t	mStorageN;
-
-public:
-	DumbPool() :
-		mStorageN(0)
-	{
-	}
-
-	~DumbPool()
-	{
-	}
-
-	_T	*Alloc()
-	{
-		DASSERT( mStorageN < _MAX );
-		return &mStorage[ mStorageN++ ];
-	}
-};
-*/
 
 //==================================================================
-class MicroPolygonGrid
+class WorkGrid
 {
 	SlColor			*mpDataCi;
 	SlColor			*mpDataOi;
@@ -73,8 +46,8 @@ public:
 	Matrix44		mMtxWorldCamera;
 	Matrix44		mMtxLocalCamera;
 
-	MicroPolygonGrid( const SymbolList &globalSymbols );
-	~MicroPolygonGrid();
+	WorkGrid( const SymbolList &globalSymbols );
+	~WorkGrid();
 
 	void Setup(u_int xdim,
 			   u_int ydim,
@@ -90,6 +63,28 @@ public:
 
 private:
 	void *addSymI( const SymbolList &globalSyms, const char *pName );
+};
+
+//==================================================================
+/// ShadedGrid
+//==================================================================
+class ShadedGrid
+{
+public:
+	u_int			mXDim;
+	u_int			mXBlocks;
+	u_int			mYDim;
+	u_int			mPointsN;
+	SlVec3			*mpPointsCS;
+	SlVec3			*mpPointsCloseCS;
+	SlVec2			*mpPosWin;
+	SlColor			*mpCi;
+	SlColor			*mpOi;
+
+	ShadedGrid();
+	~ShadedGrid();
+
+	void Init( u_int pointsN );
 };
 
 //==================================================================
