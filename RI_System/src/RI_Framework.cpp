@@ -69,13 +69,18 @@ void Framework::RenderBucket_s( Hider &hider, HiderBucket &bucket )
 
 	bucket.BeginRender();
 
-	MicroPolygonGrid	grid( *hider.mpGlobalSyms );
+	WorkGrid	workGrid( *hider.mpGlobalSyms );
 
-	for (size_t i=0; i < pPrimList.size(); ++i)
+	DVec<ShadedGrid>	shadedGrids;
+
+	size_t				primsN = pPrimList.size();
+
+	shadedGrids.resize( primsN );
+	for (size_t i=0; i < primsN; ++i)
 	{
 		const SimplePrimitiveBase	*pPrim = (const SimplePrimitiveBase *)pPrimList[i];
 
-		grid.Setup(
+		workGrid.Setup(
 			pPrim->mDiceGridWd,
 			pPrim->mDiceGridHe,
 			pPrim->mURange,
@@ -83,26 +88,26 @@ void Framework::RenderBucket_s( Hider &hider, HiderBucket &bucket )
 			pPrim->mpTransform->GetMatrix(),
 			hider.mMtxWorldCamera );
 
-		pPrim->Dice( grid, hider.mParams.mDbgColorCodedGrids );
+		pPrim->Dice( workGrid, hider.mParams.mDbgColorCodedGrids );
 
 		// should check backface and trim
-		grid.Displace( *pPrim->mpAttribs );
+		workGrid.Displace( *pPrim->mpAttribs );
 
-		grid.Shade( *pPrim->mpAttribs );
+		workGrid.Shade( *pPrim->mpAttribs );
 
-		hider.Hide(
-				grid,
+		shadedGrids[ i ].Init( workGrid.mPointsN );
+
+		hider.Bust(
+				shadedGrids[ i ],
+				workGrid,
 				(float)-bucket.mX1,
 				(float)-bucket.mY1,
 				hider.mFinalBuff.mWd,
-				hider.mFinalBuff.mHe,
-				bucket.mCBuff,
-				bucket.mZBuff );
-
-		// not thread safe to release here...
-		// pPrim->Release();
-		// pPrimList[i] = NULL;
+				hider.mFinalBuff.mHe );
 	}
+
+	for (size_t i=0; i < primsN; ++i)
+		hider.Hide( bucket, shadedGrids[i] );
 
 	bucket.EndRender( hider.mFinalBuff );
 }

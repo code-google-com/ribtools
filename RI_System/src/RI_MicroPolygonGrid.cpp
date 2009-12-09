@@ -20,17 +20,7 @@ namespace RI
 {
 
 //==================================================================
-void *MicroPolygonGrid::addSymI( const SymbolList &globalSyms, const char *pName )
-{
-	const Symbol	*pSrcSym = globalSyms.FindSymbol( pName );
-
-	SymbolI	*pSymI = mSymbolIs.AddInstance( *pSrcSym, MP_GRID_MAX_SIZE );
-
-	return pSymI->GetRWData();
-}
-
-//==================================================================
-MicroPolygonGrid::MicroPolygonGrid( const SymbolList &globalSyms ) :
+WorkGrid::WorkGrid( const SymbolList &globalSyms ) :
 	mXDim(0),
 	mYDim(0),
 	mpPointsWS(0),
@@ -73,8 +63,18 @@ MicroPolygonGrid::MicroPolygonGrid( const SymbolList &globalSyms ) :
 }
 
 //==================================================================
-MicroPolygonGrid::~MicroPolygonGrid()
+WorkGrid::~WorkGrid()
 {
+}
+
+//==================================================================
+void *WorkGrid::addSymI( const SymbolList &globalSyms, const char *pName )
+{
+	const Symbol	*pSrcSym = globalSyms.FindSymbol( pName );
+
+	SymbolI	*pSymI = mSymbolIs.AddInstance( *pSrcSym, MP_GRID_MAX_SIZE );
+
+	return pSymI->GetRWData();
 }
 
 //==================================================================
@@ -89,7 +89,7 @@ static void fillColArray( SlColor *pCol, size_t n, float r, float g, float b )
 }
 
 //==================================================================
-void MicroPolygonGrid::Setup(
+void WorkGrid::Setup(
 						u_int xdim,
 						u_int ydim,
 						const float uRange[2],
@@ -127,7 +127,7 @@ void MicroPolygonGrid::Setup(
 }
 
 //==================================================================
-void MicroPolygonGrid::Displace( const Attributes &attribs )
+void WorkGrid::Displace( const Attributes &attribs )
 {
 	if ( attribs.moDisplaceSHI.Use() )
 	{
@@ -143,7 +143,7 @@ void MicroPolygonGrid::Displace( const Attributes &attribs )
 }
 
 //==================================================================
-void MicroPolygonGrid::Shade( const Attributes &attribs )
+void WorkGrid::Shade( const Attributes &attribs )
 {
 	mSurfRunCtx.SetupIfChanged(
 					attribs,
@@ -153,6 +153,46 @@ void MicroPolygonGrid::Shade( const Attributes &attribs )
 					mPointsN );
 
 	mSurfRunCtx.mpShaderInst->Run( mSurfRunCtx );
+}
+
+//==================================================================
+/// 
+//==================================================================
+ShadedGrid::ShadedGrid() :
+					mPointsN(0),
+					mpPointsCS(NULL),
+					mpPointsCloseCS(NULL),
+					mpCi(NULL),
+					mpOi(NULL)
+{
+}
+
+//==================================================================
+ShadedGrid::~ShadedGrid()
+{
+	DSAFE_DELETE_ARRAY( mpPointsCS );
+}
+
+//==================================================================
+void ShadedGrid::Init( u_int pointsN )
+{
+	mPointsN = pointsN;
+
+	size_t	blocksN = RI_GET_SIMD_BLOCKS( pointsN );
+
+	size_t	offs[5] = { 0 };
+
+	offs[0] =			sizeof(*mpPointsCS		) * blocksN;
+	offs[1] = offs[0] + sizeof(*mpPointsCloseCS	) * blocksN;
+	offs[2] = offs[1] + sizeof(*mpPosWin		) * blocksN;
+	offs[3] = offs[2] + sizeof(*mpCi			) * blocksN;
+	offs[4] = offs[3] + sizeof(*mpOi			) * blocksN;
+
+	mpPointsCS		= (SlVec3	*)DNEW U8 [ offs[4] ];
+	mpPointsCloseCS = (SlVec3	*)((U8 *)mpPointsCS + offs[0]);
+	mpPosWin		= (SlVec2	*)((U8 *)mpPointsCS + offs[1]);
+	mpCi			= (SlColor	*)((U8 *)mpPointsCS + offs[2]);
+	mpOi			= (SlColor	*)((U8 *)mpPointsCS + offs[3]);
 }
 
 //==================================================================

@@ -17,7 +17,7 @@ namespace RI
 
 class Attributes;
 class SymbolList;
-class MicroPolygonGrid;
+class WorkGrid;
 
 //==================================================================
 /// SlIlluminanceCtx
@@ -82,7 +82,7 @@ public:
 	DVec<u_int>				mDefParamValsStartPCs;
 
 public:
-	MicroPolygonGrid		*mpGrid;
+	WorkGrid		*mpGrid;
 
 	// for light shaders only
 	bool					mIsInSolar;
@@ -126,7 +126,7 @@ public:
 	SlRunContext( SymbolIList &symsIList, size_t maxPointsN );
 	~SlRunContext();
 
-	void Init( MicroPolygonGrid *pGrid );
+	void Init( WorkGrid *pGrid );
 
 	void SetupIfChanged(
 			const Attributes	&attribs,
