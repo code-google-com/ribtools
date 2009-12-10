@@ -81,6 +81,9 @@ public:
 			minY < mY2 && maxY >= mY1;
 	}
 
+	u_int GetWd() const	{ return (u_int)(mX2 - mX1); }
+	u_int GetHe() const	{ return (u_int)(mY2 - mY1); }
+
 	DVec<SimplePrimitiveBase *>	&GetPrimList()	{ return mpPrims;	}
 };
 

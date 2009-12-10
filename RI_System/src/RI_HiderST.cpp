@@ -327,7 +327,11 @@ void Hider::Bust(
 		SlVec4		Pproj = V4__V3W1_Mul_M44<SlScalar>( pPointsWS[ blkIdx ], mMtxWorldProj );
 		SlScalar	oow = one / Pproj.w();
 
-		//shadGrid.mpPointsCS[ blkIdx ]			= 0;
+		// TODO: should replace pPointsWS with pPointsCS... ..to avoid this and also because
+		// perhaps P should indeed be in "current" space (camera)
+		SlVec3		PtCS = V3__V3W1_Mul_M44<SlScalar>( pPointsWS[ blkIdx ], mMtxWorldCamera );
+
+		shadGrid.mpPointsCS[ blkIdx ]			= PtCS;
 		//shadGrid.mpPointsCloseCS[ blkIdx ]	= 0;
 
 		shadGrid.mpPosWin[ blkIdx ][0] =  Pproj.x() * screenHWd * oow + screenCx;
@@ -339,12 +343,100 @@ void Hider::Bust(
 }
 
 //==================================================================
-void Hider::Hide( HiderBucket &buck, const ShadedGrid &shadGrid )
+void Hider::HideCountBegin(
+					DVec<u_int> &out_pixelsSamplesCount,
+					HiderBucket &buck )
+{
+	size_t	pixelsN = buck.GetWd() * buck.GetHe();
+
+	out_pixelsSamplesCount.resize( pixelsN );
+
+	for (size_t i=0; i < pixelsN; ++i)
+		out_pixelsSamplesCount[i] = 0;
+}
+
+//==================================================================
+void Hider::HideCountGrid(
+					DVec<u_int>			&inout_pixelsSamplesCount,
+					HiderBucket			&buck,
+					const ShadedGrid	&shadGrid )
 {
 	size_t	blocksN = RI_GET_SIMD_BLOCKS( shadGrid.mPointsN );
 
-	int	buckWd = buck.mX2 - buck.mX1;
-	int	buckHe = buck.mY2 - buck.mY1;
+	int	buckWd = buck.GetWd();
+	int	buckHe = buck.GetHe();
+
+	for (size_t blkIdx=0; blkIdx < blocksN; ++blkIdx)
+	{
+		for (size_t	itmIdx=0; itmIdx < RI_SIMD_BLK_LEN; ++itmIdx)
+		{
+			int	x = (int)(shadGrid.mpPosWin[ blkIdx ][0][ itmIdx ]) - buck.mX1;
+			int	y = (int)(shadGrid.mpPosWin[ blkIdx ][1][ itmIdx ]) - buck.mY1;
+
+			if ( x >= 0 && y >= 0 && x < buckWd && y < buckHe )
+			{
+				inout_pixelsSamplesCount[ y * buckHe + x ] += 1;
+			}
+		}
+	}
+}
+
+//==================================================================
+void Hider::HideCountEnd(
+					DVec<HiderPixel>		&out_pixels,
+					DVec<HiderSampleData>	&out_sampData,
+					HiderBucket				&buck,
+					const DVec<u_int>		&pixelsSamplesCount )
+{
+	size_t	totSamples = 0;
+	size_t	pixelsN = pixelsSamplesCount.size();
+	for (size_t i=0; i < pixelsN; ++i)
+		totSamples += pixelsSamplesCount[i];
+
+	out_pixels.resize( pixelsN );
+	out_sampData.resize( totSamples );
+
+	size_t	sampIdx = 0;
+	for (size_t i=0; i < pixelsN; ++i)
+	{
+		out_pixels[i].mX			= 0;
+		out_pixels[i].mY			= 0;
+		out_pixels[i].mpSampCoords	= NULL;
+		out_pixels[i].mSampDataN	= pixelsSamplesCount[i];
+
+		if ( out_pixels[i].mSampDataN )
+			out_pixels[i].mpSampData = &out_sampData[ sampIdx ];
+		else
+			out_pixels[i].mpSampData = NULL;
+
+		sampIdx += pixelsSamplesCount[i];
+	}
+}
+
+//==================================================================
+void Hider::HideAddSamplesSetup(
+				DVec<u_int>			&out_pixelsSampsIdxs,
+				HiderBucket			&buck )
+{
+	size_t	pixelsN = buck.GetWd() * buck.GetHe();
+
+	out_pixelsSampsIdxs.resize( pixelsN );
+
+	for (size_t i=0; i < pixelsN; ++i)
+		out_pixelsSampsIdxs[i] = 0;
+}
+
+//==================================================================
+void Hider::HideAddSamples(
+					DVec<HiderPixel>	&pixels,
+					DVec<u_int>			&pixelsSampsIdxs,
+					HiderBucket			&buck,
+					const ShadedGrid	&shadGrid )
+{
+	size_t	blocksN = RI_GET_SIMD_BLOCKS( shadGrid.mPointsN );
+
+	int	buckWd = buck.GetWd();
+	int	buckHe = buck.GetHe();
 
 	for (size_t blkIdx=0; blkIdx < blocksN; ++blkIdx)
 	{
@@ -361,8 +453,58 @@ void Hider::Hide( HiderBucket &buck, const ShadedGrid &shadGrid )
 				rgb[1] = shadGrid.mpCi[blkIdx][1][itmIdx];
 				rgb[2] = shadGrid.mpCi[blkIdx][2][itmIdx];
 
-				buck.mCBuff.SetSample( x, y, rgb );
+				size_t		pixIdx = buckWd * y + x;
+				size_t		sampIdx = pixelsSampsIdxs[ pixIdx ]++;
+
+				HiderSampleData	*pSampData = pixels[ pixIdx ].mpSampData + sampIdx;
+
+				pSampData->mDepth = shadGrid.mpPointsCS[blkIdx][2][itmIdx];
+
+				pSampData->mCi[0] = shadGrid.mpCi[blkIdx][0][itmIdx];
+				pSampData->mCi[1] = shadGrid.mpCi[blkIdx][1][itmIdx];
+				pSampData->mCi[2] = shadGrid.mpCi[blkIdx][2][itmIdx];
+
+				pSampData->mOi[0] = shadGrid.mpOi[blkIdx][0][itmIdx];
+				pSampData->mOi[1] = shadGrid.mpOi[blkIdx][1][itmIdx];
+				pSampData->mOi[2] = shadGrid.mpOi[blkIdx][2][itmIdx];
 			}
+		}
+	}
+}
+
+//==================================================================
+void Hider::Hide(
+				DVec<HiderPixel>	&pixels,
+				HiderBucket			&buck )
+{
+	u_int	buckWd = buck.GetWd();
+	u_int	buckHe = buck.GetHe();
+
+	size_t	pixIdx = 0;
+	for (u_int y=0; y < buckHe; ++y)
+	{
+		for (u_int x=0; x < buckWd; ++x, ++pixIdx)
+		{
+			u_int			dataN = pixels[pixIdx].mSampDataN;
+
+			if NOT( dataN )
+				continue;
+
+			HiderSampleData	*pData = pixels[pixIdx].mpSampData;
+
+			u_int	minIdx		= 0;
+			float	minDepth	= FLT_MAX;
+
+			for (u_int i=0; i < dataN; ++i)
+			{
+				if ( pData[i].mDepth < minDepth )
+				{
+					minIdx = i;
+					minDepth = pData[i].mDepth;
+				}
+			}
+
+			buck.mCBuff.SetSample( x, y, pData[ minIdx ].mCi );
 		}
 	}
 }
