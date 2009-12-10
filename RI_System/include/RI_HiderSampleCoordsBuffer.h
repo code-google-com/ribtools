@@ -20,10 +20,8 @@ class HiderSampleData
 {
 public:
 	float			mDepth;
-	float			*mpData;
-	u_int			mDataSize;
-
-	HiderSampleData	*mpNext;
+	float			mCi[3];
+	float			mOi[3];
 };
 
 //==================================================================
@@ -53,6 +51,7 @@ class HiderPixel
 public:
 	int						mX, mY;
 	const HiderSampleCoords	*mpSampCoords;
+	u_int					mSampDataN;
 	HiderSampleData			*mpSampData;
 };
 

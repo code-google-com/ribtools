@@ -95,7 +95,34 @@ public:
 				u_int			screenWd,
 				u_int			screenHe ) const;
 
-	void Hide( HiderBucket &buck, const ShadedGrid &shadGrid );
+	void HideCountBegin(
+					DVec<u_int> &out_pixelsSamplesCount,
+					HiderBucket &buck );
+
+	void HideCountGrid(
+					DVec<u_int>			&inout_pixelsSamplesCount,
+					HiderBucket			&buck,
+					const ShadedGrid	&shadGrid );
+
+	void HideCountEnd(
+					DVec<HiderPixel>		&out_pixels,
+					DVec<HiderSampleData>	&out_sampData,
+					HiderBucket				&buck,
+					const DVec<u_int>		&pixelsSamplesCount );
+
+	void HideAddSamplesSetup(
+					DVec<u_int>			&out_pixelsSampsIdxs,
+					HiderBucket			&buck );
+
+	void HideAddSamples(
+					DVec<HiderPixel>	&pixels,
+					DVec<u_int>			&pixelsSampsIdxs,
+					HiderBucket			&buck,
+					const ShadedGrid	&shadGrid );
+
+	void Hide(
+					DVec<HiderPixel>	&pixels,
+					HiderBucket			&buck );
 
 	u_int		GetOutputDataStride() const	{ return mFinalBuff.GetWd() * NCOLS;	}
 	u_int		GetOutputDataWd() const		{ return mFinalBuff.GetWd();			}
