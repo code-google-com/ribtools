@@ -375,7 +375,7 @@ void Hider::HideCountGrid(
 
 			if ( x >= 0 && y >= 0 && x < buckWd && y < buckHe )
 			{
-				inout_pixelsSamplesCount[ y * buckHe + x ] += 1;
+				inout_pixelsSamplesCount[ y * buckWd + x ] += 1;
 			}
 		}
 	}
