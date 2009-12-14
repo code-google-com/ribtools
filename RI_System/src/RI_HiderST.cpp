@@ -14,6 +14,9 @@
 static const u_int	BUCKET_SIZE = 128;
 
 //==================================================================
+#define MAX_SAMP_DATA_PER_PIXEL	1024
+
+//==================================================================
 namespace RI
 {
 
@@ -473,6 +476,41 @@ void Hider::HideAddSamples(
 }
 
 //==================================================================
+static void sortSampData( HiderSampleData *pSampDataListSort[], HiderSampleData *pData, u_int dataN )
+{
+	if ( dataN == 1 )
+	{
+		pSampDataListSort[0] = pData;
+		return;
+	}
+
+	// (sad ?) insert sort
+	{
+		int doneDataN = 0;
+
+		for (u_int i=0; i < dataN; ++i)
+		{
+			float	depthI = pData[i].mDepth;
+
+			int j=0;
+			for (; j < doneDataN; ++j)
+			{
+				if ( depthI < pSampDataListSort[j]->mDepth )
+				{
+					for (int k=doneDataN-1; k >= j; --k)
+						pSampDataListSort[k+1] = pSampDataListSort[k];
+
+					break;
+				}
+			}
+
+			pSampDataListSort[j] = &pData[i];
+			doneDataN += 1;
+		}
+	}
+}
+
+//==================================================================
 void Hider::Hide(
 				DVec<HiderPixel>	&pixels,
 				HiderBucket			&buck )
@@ -490,21 +528,31 @@ void Hider::Hide(
 			if NOT( dataN )
 				continue;
 
+			DASSERT( dataN <= MAX_SAMP_DATA_PER_PIXEL );
+			dataN = DMIN( dataN, MAX_SAMP_DATA_PER_PIXEL );
+
 			HiderSampleData	*pData = pixels[pixIdx].mpSampData;
 
-			u_int	minIdx		= 0;
-			float	minDepth	= FLT_MAX;
+			HiderSampleData *pSampDataListSort[ MAX_SAMP_DATA_PER_PIXEL ];
 
-			for (u_int i=0; i < dataN; ++i)
+			sortSampData( pSampDataListSort, pData, dataN );
+
+			static Vec3<float>	one( 1 );
+
+			if ( dataN > 0 )
 			{
-				if ( pData[i].mDepth < minDepth )
-				{
-					minIdx = i;
-					minDepth = pData[i].mDepth;
-				}
-			}
+				Vec3<float>	accCol( 0.f );
 
-			buck.mCBuff.SetSample( x, y, pData[ minIdx ].mCi );
+				for (int i=(int)dataN-1; i >= 0; --i)
+				{
+					Vec3<float>	col = Vec3<float>( pSampDataListSort[i]->mCi );
+					Vec3<float>	opa = Vec3<float>( pSampDataListSort[i]->mOi );
+
+					accCol = accCol * (one - opa) + col;
+				}
+
+				buck.mCBuff.SetSample( x, y, &accCol.x() );
+			}
 		}
 	}
 }
